@@ -151,6 +151,17 @@ class Solver
     end
   end
 
+  def dump_candidates
+    puts "Candidates"
+
+    coords = @candidates.map { |cell| cell.pos }.uniq
+    cells = coords.map { |pos| @candidates.select { |cell| cell.pos == pos} } .
+                map { |xs| [xs[0].pos, xs.map { |cell| cell.value }] }
+    cells.each do |pos, nums|
+      puts "    (#{pos.row}, #{pos.column})    #{nums}"
+    end
+  end
+
   def solve
     puts "Start solving"
     finders = [

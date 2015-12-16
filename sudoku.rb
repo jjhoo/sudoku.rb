@@ -150,7 +150,8 @@ class Solver
     finders = [
       proc {|s| self.find_singles_simple()},
       proc {|s| self.find_singles()},
-      proc {|s| self.find_naked_pairs()}
+      proc {|s| self.find_naked_pairs()},
+      proc {|s| self.find_pointing_pairs()}
     ]
     
     while 1
@@ -263,13 +264,8 @@ class Solver
     puts "Find singles"
     
     def dummy(set)
-      nums = []
+      nums = unique_numbers(set)
       found = []
-      
-      set.each do |cell|
-        # puts "find_singles cell #{cell.pos}, value #{cell.value}"
-        nums = nums | [cell.value]
-      end
 
       nums.sort!
 
@@ -299,12 +295,9 @@ class Solver
   def find_naked_pairs
     puts "Find naked pairs"
     def dummy(set)
-      nums = []
+      nums = unique_numbers(set)
       found = []
 
-      set.each { |cell| nums = nums | [cell.value] }
-      nums.sort!
-      
       if nums.length < 2
         # puts "Too short set #{set}"
         return []
@@ -349,14 +342,26 @@ class Solver
     found
   end
 
-  def find_triples
+  def find_naked_triples
     []
   end
 
-  def find_quads
+  def find_naked_quads
+    []
+  end
+
+  def find_pointing_pairs
     []
   end
 end
+
+def unique_numbers(set)
+  nums = []
+  set.each { |cell| nums = nums | [cell.value] }
+  nums.sort!
+  nums
+end
+
 
 def string_to_grid(str)
   i = 1

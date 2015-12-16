@@ -240,7 +240,7 @@ class Solver
       found = found + fun.call(self.get_box(i))
     end
 
-    found.uniq! {|x| x.pos}
+    found.uniq! {|x| [x.pos, x.value]}
     found.each do |x|
       puts "eliminator found: #{x}"
     end

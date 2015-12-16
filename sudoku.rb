@@ -351,7 +351,62 @@ class Solver
   end
 
   def find_pointing_pairs
-    []
+    def dummy(set, psameline)
+      return [] if set.length < 3
+      nums = unique_numbers(set)
+
+      return [] if nums.length < 3
+
+      found = []
+
+      nums.each do |x|
+        nset = set.select { |cell| cell.value == x }
+        if nset.length > 2
+          nset.each do |a|
+            nset.each do |b|
+              next if a.pos == b.pos
+
+              if a.pos.box_number == b.pos.box_number and
+                psameline.call(a, b)
+
+                # puts "Maybe a pointing pair #{a}, #{b}"
+
+                bset = self.get_box(a.pos.box_number)
+                bset.select! { |cell| cell.value == x }
+
+                if bset.length == 2
+                  # puts "   pointing pair #{a}, #{b}"
+
+                  found = found | nset.reject do |cell|
+                    cell.pos == a.pos or cell.pos == b.pos
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+      found
+    end
+
+    found = []
+    (1..9).each do |i|
+      set = self.get_row(i)
+      found = found | dummy(set, proc { |a, b| a.pos.row == b.pos.row })
+    end
+
+    (1..9).each do |i|
+      set = self.get_column(i)
+      found = found | dummy(set, proc { |a, b| a.pos.column == b.pos.column })
+    end
+
+    if found.length > 0
+      found.each do |x|
+        puts "find_pointing_pairs #{x}"
+      end
+      self.update_candidates(found)
+    end
+    found
   end
 end
 

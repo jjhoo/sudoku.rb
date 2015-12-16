@@ -48,6 +48,12 @@ class Pos
     self.box_number == other.box_number
   end
 
+  def sees?(other)
+    self != other and (self.same_row?(other) or
+                       self.same_column?(other) or
+                       self.same_box?(other))
+  end
+
   def to_s
     "#{@row} #{@column}"
   end
@@ -152,7 +158,8 @@ class Solver
       proc {|s| self.find_singles()},
       proc {|s| self.find_naked_pairs()},
       proc {|s| self.find_pointing_pairs()},
-      proc {|s| self.find_xwings()}
+      proc {|s| self.find_xwings()},
+      proc {|s| self.find_xyzwings()}
     ]
     
     while 1
@@ -472,6 +479,50 @@ class Solver
     if found.length > 0
       found.each do |x|
         puts "find_xwings #{x}"
+      end
+      self.update_candidates(found)
+    end
+    found
+  end
+
+  def find_xyzwings
+    found = []
+
+    # Need to get cells that have 2 or 3 numbers
+    coords = @candidates.map { |cell| cell.pos }.uniq
+    cells = coords.map { |pos| @candidates.select { |cell| cell.pos == pos} } .
+            select { |foo| foo.length == 2 or foo.length == 3 } .
+            map { |xs| [xs[0].pos, xs.map { |cell| cell.value }] }
+    cells.each do |a, anums|
+      next unless anums.length == 2
+
+      cells.each do |b, bnums|
+        next if a == b
+        next if a.row < b.row
+        next unless bnums.length == 2
+
+        cells.each do |w, wnums|
+          next if a == w or b == w
+          next unless wnums.length == 3
+          next unless wnums == (anums | bnums).sort
+          next unless w.sees?(a) and w.sees?(b)
+
+          # puts "consider #{a} - #{b} - #{w}"
+          # puts "	     #{anums} - #{bnums} - #{wnums}"
+
+          z = (anums & bnums)[0]
+          found = found | @candidates.select { |cell| cell.value = z and
+                                               a.sees?(cell.pos) and
+                                               b.sees?(cell.pos) and
+                                               w.sees?(cell.pos) } .
+                          uniq {|cell| cell.pos}
+        end
+      end
+    end
+
+    if found.length > 0
+      found.each do |x|
+        puts "find_xyzwings #{x}"
       end
       self.update_candidates(found)
     end

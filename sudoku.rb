@@ -151,7 +151,8 @@ class Solver
       proc {|s| self.find_singles_simple()},
       proc {|s| self.find_singles()},
       proc {|s| self.find_naked_pairs()},
-      proc {|s| self.find_pointing_pairs()}
+      proc {|s| self.find_pointing_pairs()},
+      proc {|s| self.find_xwings()}
     ]
     
     while 1
@@ -408,6 +409,81 @@ class Solver
     end
     found
   end
+
+  def find_xwings
+    def dummy(pgetset, pother, ppos, pposother)
+      found = []
+      (1..8).each do |i|
+        j0 = i + 1
+
+        aset = pgetset.call(i)
+        anums = numbers(aset)
+
+        as = number_counts(anums, 2)
+        next if as.length == 0
+
+        (j0..9).each do |j|
+          bset = pgetset.call(j)
+
+          bnums = numbers(bset)
+          bs = number_counts(bnums, 2)
+          next if bs.length == 0
+          # puts "xwing? #{i} #{j} #{as} #{bs}"
+
+          as.each do |a, _|
+            bs.each do |b, _|
+              next if a != b
+              # puts "xwing?? #{i} #{j} #{a} #{b}"
+              apos = aset.select { |cell| cell.value == a } .
+                     map { |cell| ppos.call(cell.pos) }
+              bpos = bset.select { |cell| cell.value == b } .
+                     map { |cell| ppos.call(cell.pos) }
+
+              if apos.length == 2 and apos == bpos
+                # puts "xwing??? #{i} #{j} #{a} #{b} #{apos} #{bpos}"
+                found = pother.call(apos[0]) .
+                        select { |cell| cell.value == a and
+                                 pposother.call(cell.pos) != i and
+                                 pposother.call(cell.pos) != j }
+                found += pother.call(apos[1]) .
+                        select { |cell| cell.value == a and
+                                 pposother.call(cell.pos) != i and
+                                 pposother.call(cell.pos) != j }
+                if found
+                  found.each { |cell| puts "  #{cell}" }
+                end
+              end
+            end
+          end
+        end
+      end
+      found
+    end
+
+    found = dummy(proc { |i| self.get_row(i) },
+                  proc { |i| self.get_column(i) },
+                  proc { |pos| pos.column },
+                  proc { |pos| pos.row })
+    found = found | dummy(proc { |i| self.get_column(i) },
+                          proc { |i| self.get_row(i) },
+                          proc { |pos| pos.row },
+                          proc { |pos| pos.column })
+
+    if found.length > 0
+      found.each do |x|
+        puts "find_xwings #{x}"
+      end
+      self.update_candidates(found)
+    end
+    found
+  end
+end
+
+def numbers(set)
+  nums = []
+  set.each { |cell| nums = nums + [cell.value] }
+  nums.sort!
+  nums
 end
 
 def unique_numbers(set)
@@ -417,6 +493,17 @@ def unique_numbers(set)
   nums
 end
 
+def number_counts(numbers, target=nil)
+  res = []
+  numbers.each do |a|
+    res.push [a, (numbers.select { |b| b == a }).length]
+  end
+  if target != nil
+    res.select! { |a, b| b == target }
+  end
+  res.uniq!
+  res
+end
 
 def string_to_grid(str)
   i = 1

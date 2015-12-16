@@ -171,6 +171,7 @@ class Solver
       proc {|s| self.find_naked_triples()},
       proc {|s| self.find_pointing_pairs()},
       proc {|s| self.find_xwings()},
+      proc {|s| self.find_ywings()},
       proc {|s| self.find_xyzwings()}
     ]
     
@@ -574,6 +575,52 @@ class Solver
     if found.length > 0
       found.each do |x|
         puts "find_xyzwings #{x}"
+      end
+      self.update_candidates(found)
+    end
+    found
+  end
+
+  def find_ywings
+    puts "Find y-wings"
+    found = []
+
+    # Need to get cells that have 2
+    coords = @candidates.map { |cell| cell.pos }.uniq
+    cells = coords.map { |pos| @candidates.select { |cell| cell.pos == pos} } .
+            select { |foo| foo.length == 2 } .
+            map { |xs| [xs[0].pos, xs.map { |cell| cell.value }] }
+
+    cells.each do |a, anums|
+      cells.each do |b, bnums|
+        next if a == b
+
+        cells.each do |hinge, hnums|
+          next if a == hinge or b == hinge
+
+          next if anums == bnums
+          next if anums == hnums
+          tmp = anums & bnums
+          next unless tmp.length == 1
+          z = tmp[0]
+
+          next unless hnums == (anums | bnums).sort - tmp
+          next unless hinge.sees?(a) and hinge.sees?(b)
+
+          # puts "consider #{a} - #{b} - #{hinge}"
+          # puts "	     #{anums} - #{bnums} - #{hnums}"
+
+          found = found | @candidates.select { |cell| cell.value == z and
+                                               a.sees?(cell.pos) and
+                                               b.sees?(cell.pos) } .
+                          uniq {|cell| cell.pos}
+        end
+      end
+    end
+
+    if found.length > 0
+      found.each do |x|
+        puts "find_ywings #{x}"
       end
       self.update_candidates(found)
     end

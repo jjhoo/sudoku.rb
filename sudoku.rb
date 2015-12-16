@@ -16,14 +16,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-GRID = "000704005020010070000080002090006250600070008053200010400090000030060090200407000"
-
 UNSOLVED = nil
-
-if GRID.length != 81
-  puts "Bad input"
-  exit
-end
 
 class Pos
   attr_accessor :row, :column, :box_number
@@ -162,6 +155,28 @@ class Solver
     end
   end
 
+  def dump_grid
+    ios = IO.new(1, "w")
+    ios << "Grid" << "\n"
+
+    ios << "     "
+    (1..9).each { |i| ios << " " << i }
+    ios << "\n\n"
+
+    (1..9).each do |i|
+      ios << i << "    "
+      (1..9).each do |j|
+        cell = @grid[Pos.new(i, j)]
+        ios << " " << cell.value
+      end
+      ios << "\n"
+    end
+  end
+
+  def solved?
+    @candidates.length == 0
+  end
+
   def solve
     puts "Start solving"
     finders = [
@@ -175,8 +190,10 @@ class Solver
       proc {|s| self.find_xyzwings()}
     ]
     
-    while 1
+    while true
       found = []
+      self.dump_candidates
+
       finders.each do |finder|
         found = finder.call()
         if found.length > 0
@@ -186,10 +203,18 @@ class Solver
           puts "Nothing found"
         end
       end
+      if self.solved?
+        puts "Solved!"
+        self.dump_grid
+        break
+      end
+
       if found.length > 0
         next
       end
+
       puts "No progress"
+      self.dump_candidates
       break
     end
   end
@@ -269,7 +294,7 @@ class Solver
       end
       found
     end
-      
+
     found = eliminator proc { |set| dummy(set) }
     if found.length > 0
       found.each do |x|
@@ -411,6 +436,7 @@ class Solver
   end
 
   def find_pointing_pairs
+    puts "Find pointing pairs"
     def dummy(set, psameline)
       return [] if set.length < 3
       nums = unique_numbers(set)
@@ -470,6 +496,7 @@ class Solver
   end
 
   def find_xwings
+    puts "Find x-wings"
     def dummy(pgetset, pother, ppos, pposother)
       found = []
       (1..8).each do |i|
@@ -508,9 +535,6 @@ class Solver
                         select { |cell| cell.value == a and
                                  pposother.call(cell.pos) != i and
                                  pposother.call(cell.pos) != j }
-                if found
-                  found.each { |cell| puts "  #{cell}" }
-                end
               end
             end
           end
@@ -538,6 +562,7 @@ class Solver
   end
 
   def find_xyzwings
+    puts "Find xyz-wings"
     found = []
 
     # Need to get cells that have 2 or 3 numbers
@@ -672,6 +697,14 @@ def string_to_grid(str)
     end
   end
   grid
+end
+
+# needs naked triple, y-wing
+GRID = "014600300050000007090840100000400800600050009007009000008016030300000010009008570"
+
+if GRID.length != 81
+  puts "Bad input"
+  exit
 end
 
 puts GRID

@@ -150,7 +150,7 @@ class Solver
     finders = [
       proc {|s| self.find_singles_simple()},
       proc {|s| self.find_singles()},
-      proc {|s| self.find_pairs()}
+      proc {|s| self.find_naked_pairs()}
     ]
     
     while 1
@@ -296,7 +296,7 @@ class Solver
     found
   end
    
-  def find_pairs
+  def find_naked_pairs
     puts "Find naked pairs"
     def dummy(set)
       nums = []
@@ -313,6 +313,11 @@ class Solver
       poss = set.map { |x| x.pos }
       poss.uniq!
 
+      if poss.length < 3
+        # Nothing to be gained
+        return []
+      end
+
       nums.combination(2) do |c|
         hits = poss.select do |pos|
           nset = set.select { |cell| cell.pos == pos }
@@ -324,13 +329,24 @@ class Solver
           end
         end
         if hits.length == 2
-          puts "hits #{c} #{hits}"
+          tmp = set.select do |cell|
+            not hits.include? cell.pos and c.include? cell.value
+          end
+          found = found | tmp
         end
       end
-      return []
+      found
     end
-    
+
     found = eliminator proc { |set| dummy(set) }
+    if found.length > 0
+      found.each do |x|
+        puts "find_naked_pairs #{x}"
+      end
+
+      self.update_candidates(found)
+    end
+    found
   end
 
   def find_triples

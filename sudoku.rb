@@ -315,37 +315,30 @@ class Solver
   def find_naked_pairs
     puts "Find naked pairs"
     def dummy(set)
-      nums = unique_numbers(set)
       found = []
+      nums = unique_numbers(set)
 
-      if nums.length < 2
-        # puts "Too short set #{set}"
-        return []
-      end
+      return [] if nums.length < 3
       
       poss = set.map { |x| x.pos }
       poss.uniq!
 
-      if poss.length < 3
-        # Nothing to be gained
-        return []
-      end
+      # Nothing to be gained
+      return [] if poss.length <= 2
+
+      cells = poss.map { |pos| [pos,
+                                set.select { |cell| cell.pos == pos } .
+                                  map { |cell| cell.value }] }
 
       nums.combination(2) do |c|
-        hits = poss.select do |pos|
-          nset = set.select { |cell| cell.pos == pos }
-          if nset.length == 2
-            nums = nset.map { |x| x.value }
-            c == nums
-          else
-            false
-          end
-        end
+        hits = cells.select { |pos, nums| c == nums }
+
         if hits.length == 2
-          tmp = set.select do |cell|
-            not hits.include? cell.pos and c.include? cell.value
+          # puts "  pair?? #{c} #{hits} #{set}"
+          hits.map! { |pos, nums| pos }
+          found = found | set.select do |cell|
+            c.include? cell.value and not hits.any? { |pos| pos == cell.pos }
           end
-          found = found | tmp
         end
       end
       found

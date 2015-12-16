@@ -168,6 +168,7 @@ class Solver
       proc {|s| self.find_singles_simple()},
       proc {|s| self.find_singles()},
       proc {|s| self.find_naked_pairs()},
+      proc {|s| self.find_naked_triples()},
       proc {|s| self.find_pointing_pairs()},
       proc {|s| self.find_xwings()},
       proc {|s| self.find_xyzwings()}
@@ -362,7 +363,53 @@ class Solver
   end
 
   def find_naked_triples
-    []
+    puts "Find naked triples"
+    def dummy(set)
+      found = []
+      nums = unique_numbers(set)
+
+      return [] if nums.length < 3
+
+      poss = set.map { |x| x.pos }
+      poss.uniq!
+
+      # Nothing to be gained
+      return [] if poss.length <= 3
+
+      cells = poss.map { |pos| [pos,
+                                set.select { |cell| cell.pos == pos } .
+                                  map { |cell| cell.value }] }
+
+      nums.combination(3) do |c|
+        hits = cells.select do |pos, nums|
+          c == nums or (nums - c).length == 0
+        end
+
+        if hits.length == 3
+          # puts "  triple?? #{c} #{hits} #{set}"
+          hits.map! { |pos, nums| pos }
+          found = found | set.select do |cell|
+            c.include? cell.value and not hits.any? { |pos| pos == cell.pos }
+          end
+        end
+      end
+      found
+    end
+
+    # tmp = dummy(self.get_box(6))
+    # if tmp.length > 0
+    #   puts "tmp #{tmp}"
+    # end
+
+    found = eliminator proc { |set| dummy(set) }
+    if found.length > 0
+      found.each do |x|
+        puts "find_naked_triples #{x}"
+      end
+
+      self.update_candidates(found)
+    end
+    found
   end
 
   def find_naked_quads

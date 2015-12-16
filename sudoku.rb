@@ -562,7 +562,7 @@ class Solver
           # puts "	     #{anums} - #{bnums} - #{wnums}"
 
           z = (anums & bnums)[0]
-          found = found | @candidates.select { |cell| cell.value = z and
+          found = found | @candidates.select { |cell| cell.value == z and
                                                a.sees?(cell.pos) and
                                                b.sees?(cell.pos) and
                                                w.sees?(cell.pos) } .

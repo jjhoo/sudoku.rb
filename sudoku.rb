@@ -337,74 +337,32 @@ class Solver
     end
     found
   end
-   
-  def find_naked_pairs
-    puts "Find naked pairs"
-    def dummy(set)
+
+  def find_naked_groups (limit)
+    puts "Find naked groups (#{limit})"
+    def dummy(set, limit)
       found = []
       nums = unique_numbers(set)
+      usable = limit + 1
 
-      return [] if nums.length < 3
-      
-      poss = set.map { |x| x.pos }
-      poss.uniq!
-
-      # Nothing to be gained
-      return [] if poss.length <= 2
-
-      cells = poss.map { |pos| [pos,
-                                set.select { |cell| cell.pos == pos } .
-                                  map { |cell| cell.value }] }
-
-      nums.combination(2) do |c|
-        hits = cells.select { |pos, nums| c == nums }
-
-        if hits.length == 2
-          # puts "  pair?? #{c} #{hits} #{set}"
-          hits.map! { |pos, nums| pos }
-          found = found | set.select do |cell|
-            c.include? cell.value and not hits.any? { |pos| pos == cell.pos }
-          end
-        end
-      end
-      found
-    end
-
-    found = eliminator proc { |set| dummy(set) }
-    if found.length > 0
-      found.each do |x|
-        puts "find_naked_pairs #{x}"
-      end
-
-      self.update_candidates(found)
-    end
-    found
-  end
-
-  def find_naked_triples
-    puts "Find naked triples"
-    def dummy(set)
-      found = []
-      nums = unique_numbers(set)
-
-      return [] if nums.length < 3
+      return [] if nums.length < usable
 
       poss = set.map { |x| x.pos }
       poss.uniq!
 
       # Nothing to be gained
-      return [] if poss.length <= 3
+      return [] if poss.length < usable
 
       cells = poss.map { |pos| [pos,
                                 set.select { |cell| cell.pos == pos } .
                                   map { |cell| cell.value }] }
 
-      nums.combination(3) do |c|
+      nums.combination(limit) do |c|
         hits = cells.select do |pos, nums|
           c == nums or (nums - c).length == 0
         end
 
-        if hits.length == 3
+        if hits.length == limit
           # puts "  triple?? #{c} #{hits} #{set}"
           hits.map! { |pos, nums| pos }
           found = found | set.select do |cell|
@@ -420,10 +378,10 @@ class Solver
     #   puts "tmp #{tmp}"
     # end
 
-    found = eliminator proc { |set| dummy(set) }
+    found = eliminator proc { |set| dummy(set, limit) }
     if found.length > 0
       found.each do |x|
-        puts "find_naked_triples #{x}"
+        puts "find_naked_group(#{limit}) #{x}"
       end
 
       self.update_candidates(found)
@@ -431,8 +389,16 @@ class Solver
     found
   end
 
+  def find_naked_pairs
+    return self.find_naked_groups(2)
+  end
+
+  def find_naked_triples
+    return self.find_naked_groups(3)
+  end
+
   def find_naked_quads
-    []
+    return self.find_naked_groups(4)
   end
 
   def find_pointing_pairs

@@ -18,6 +18,12 @@
 
 UNSOLVED = nil
 
+BOXES = [1, 4, 7] . map { |i| [1, 4, 7] . map { |j| [[i, j], [i+2, j+2]] } } . flatten(1)
+
+def get_box_bounds(box)
+  BOXES[box - 1]
+end
+
 class Pos
   attr_accessor :row, :column, :box_number
 
@@ -185,6 +191,7 @@ class Solver
       proc {|s| self.find_naked_pairs()},
       proc {|s| self.find_naked_triples()},
       proc {|s| self.find_pointing_pairs()},
+      proc {|s| self.find_boxline_reductions()},
       proc {|s| self.find_xwings()},
       proc {|s| self.find_ywings()},
       proc {|s| self.find_xyzwings()}
@@ -617,6 +624,71 @@ class Solver
     end
     found
   end
+
+  def find_boxline_reductions
+    puts "Find box/line reductions"
+    found = []
+
+    def dummy(box)
+      found = []
+
+      set = self.get_box(box)
+      return [] if set.length <= 2
+
+      ulc, lrc = get_box_bounds(box)
+
+      (ulc[0]..lrc[0]).each do |i|
+        next if set.select { |cell| cell.pos.row == i } . length < 2
+        row = self.get_row(i)
+        nums = numbers(row)
+
+        # row has two possible cells for N, and they are in the box?
+        foos = number_counts(nums, 2)
+        next if foos.length == 2
+
+        foos.each do |x, cnt|
+          cells = row.select { |cell| cell.value == x and
+                               cell.pos.box_number == box}
+          next unless cells.length == 2
+          found = found | set.select { |cell| cell.value == x and
+                                       cell.pos.row != i }
+          # puts "box #{i} #{box} #{ulc} #{lrc} #{x} #{cnt} #{found.length}"
+        end
+      end
+
+      (ulc[1]..lrc[1]).each do |i|
+        next if set.select { |cell| cell.pos.column == i } . length < 2
+        column = self.get_column(i)
+        nums = numbers(column)
+
+        # row has two possible cells for N, and they are in the box?
+        foos = number_counts(nums, 2)
+        next if foos.length == 2
+
+        foos.each do |x, cnt|
+          cells = column.select { |cell| cell.value == x and
+                                  cell.pos.box_number == box}
+          next unless cells.length == 2
+          found = found | set.select { |cell| cell.value == x and
+                                       cell.pos.column != i }
+          # puts "box #{i} #{box} #{ulc} #{lrc} #{x} #{cnt} #{found.length}"
+        end
+      end
+      found
+    end
+
+    (1..9).each do |i|
+      found = found | dummy(i)
+    end
+
+    if found.length > 0
+      found.each do |x|
+        puts "find_boxline_reductions #{x}"
+      end
+      self.update_candidates(found)
+    end
+    found
+  end
 end
 
 def numbers(set)
@@ -666,7 +738,10 @@ def string_to_grid(str)
 end
 
 # needs naked triple, y-wing
-GRID = "014600300050000007090840100000400800600050009007009000008016030300000010009008570"
+# GRID = "014600300050000007090840100000400800600050009007009000008016030300000010009008570"
+#
+# can proceed with box/line reduction
+GRID = "200068050008002000560004801000000530400000002097000000804300096000800300030490007"
 
 if GRID.length != 81
   puts "Bad input"

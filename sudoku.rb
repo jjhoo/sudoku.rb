@@ -190,6 +190,10 @@ class Solver
       proc {|s| self.find_singles()},
       proc {|s| self.find_naked_pairs()},
       proc {|s| self.find_naked_triples()},
+      proc {|s| self.find_naked_quads()},
+      proc {|s| self.find_hidden_pairs()},
+      proc {|s| self.find_hidden_triples()},
+      proc {|s| self.find_hidden_quads()},
       proc {|s| self.find_pointing_pairs()},
       proc {|s| self.find_boxline_reductions()},
       proc {|s| self.find_xwings()},
@@ -406,6 +410,75 @@ class Solver
 
   def find_naked_quads
     return self.find_naked_groups(4)
+  end
+
+  def find_hidden_groups(limit)
+    puts "Find hidden groups (#{limit})"
+    dummy = lambda do |set, limit|
+      found = []
+
+      nums = numbers(set)
+      ncts = number_counts(nums, limit)
+      unums = ncts.map { |a, _cnt| a }
+
+      usable = limit + 1
+      return [] if unums.length < usable
+
+      poss = set.map(&:pos)
+      poss.uniq!
+
+      # Nothing to be gained
+      return [] if poss.length < usable
+
+      cells = poss.map do |pos|
+        [pos, set.select { |cell| cell.pos == pos }.map(&:value)]
+      end
+
+      # puts "  pair? #{ncts} #{unums}"
+      unums.combination(limit) do |c|
+        hits = cells.select do |_pos, nums|
+          (c & nums).length == limit
+        end
+        next unless hits.length == limit
+
+        # puts "  pair???? #{c} #{hits}"
+
+        if hits.length == limit
+          found |= set.select do |cell|
+            not c.include? cell.value and
+              hits.any? { |pos, _nums| pos == cell.pos }
+          end
+        end
+      end
+      found
+    end
+
+    # tmp = dummy(get_box(6))
+    # if tmp.length > 0
+    #   puts "tmp #{tmp}"
+    # end
+
+    found = eliminator proc { |set| dummy.call(set, limit) }
+    if found.length > 0
+      found.each do |x|
+        puts "find_hidden_group(#{limit}) #{x}"
+      end
+
+      update_candidates(found)
+    end
+    found
+  end
+
+  def find_hidden_pairs
+    find_hidden_groups(2)
+  end
+
+  def find_hidden_triples
+    find_hidden_groups(3)
+  end
+
+  def find_hidden_quads
+    find_hidden_groups(4)
   end
 
   def find_pointing_pairs

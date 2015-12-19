@@ -148,10 +148,11 @@ class Solver
     puts 'Candidates'
 
     coords = @candidates.map(&:pos).uniq
-    cells = coords.map do |pos|
+
+    cells = coords.map { |pos|
       @candidates.select { |cell| cell.pos == pos }
-        .map { |xs| [xs[0].pos, xs.map(&:value)] }
-    end
+    }.map { |xs| [xs[0].pos, xs.map(&:value)] }
+
     cells.each do |pos, nums|
       puts "    (#{pos.row}, #{pos.column})    #{nums}"
     end

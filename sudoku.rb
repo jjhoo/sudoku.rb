@@ -690,60 +690,48 @@ class Solver
     puts 'Find box/line reductions'
     found = []
 
-    dummy = lambda do |box|
+    common = lambda do |set, subset, pinbox, pinline|
       found = []
+      nums = numbers(subset)
 
-      set = get_box(box)
-      return [] if set.length <= 2
+      # row has two possible cells for N, and they are in the box?
+      foos = number_counts(nums, 2)
+      return [] if foos.length == 2
 
-      ulc, lrc = get_box_bounds(box)
-
-      (ulc[0]..lrc[0]).each do |i|
-        next if set.count { |cell| cell.pos.row == i } < 2
-        row = get_row(i)
-        nums = numbers(row)
-
-        # row has two possible cells for N, and they are in the box?
-        foos = number_counts(nums, 2)
-        next if foos.length == 2
-
-        foos.each do |x, _cnt|
-          cells = row.select do |cell|
-            cell.value == x and cell.pos.box_number == box
-          end
-          next unless cells.length == 2
-          found |= set.select do |cell|
-            cell.value == x and cell.pos.row != i
-          end
-          # puts "box #{i} #{box} #{ulc} #{lrc} #{x} #{cnt} #{found.length}"
+      foos.each do |x, _cnt|
+        cells = subset.select do |cell|
+          cell.value == x and pinbox.call(cell.pos)
         end
-      end
-
-      (ulc[1]..lrc[1]).each do |i|
-        next if set.count { |cell| cell.pos.column == i } < 2
-        column = get_column(i)
-        nums = numbers(column)
-
-        # row has two possible cells for N, and they are in the box?
-        foos = number_counts(nums, 2)
-        next if foos.length == 2
-
-        foos.each do |x, _cnt|
-          cells = column.select do |cell|
-            cell.value == x and cell.pos.box_number == box
-          end
-          next unless cells.length == 2
-          found |= set.select do |cell|
-            cell.value == x and cell.pos.column != i
-          end
-          # puts "box #{i} #{box} #{ulc} #{lrc} #{x} #{cnt} #{found.length}"
+        next unless cells.length == 2
+        found |= set.select do |cell|
+          cell.value == x and not pinline.call(cell.pos)
         end
+        # puts "box #{i} #{box} #{ulc} #{lrc} #{x} #{cnt} #{found.length}"
       end
       found
     end
 
-    (1..9).each do |i|
-      found |= dummy.call(i)
+    found = []
+    (1..9).each do |box|
+      set = get_box(box)
+
+      next if set.length <= 2
+
+      ulc, lrc = get_box_bounds(box)
+
+      (ulc[0]..lrc[0]).each do |i|
+        nfound = common.call(set, get_row(i),
+                             lambda {|pos| pos.box_number == box},
+                             lambda {|pos| pos.row == i})
+        found |= nfound if nfound.length > 0
+      end
+
+      (ulc[1]..lrc[1]).each do |i|
+        nfound = common.call(set, get_column(i),
+                             lambda {|pos| pos.box_number == box},
+                             lambda {|pos| pos.column == i})
+        found |= nfound if nfound.length > 0
+      end
     end
 
     if found.length > 0

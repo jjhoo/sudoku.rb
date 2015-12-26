@@ -789,33 +789,23 @@ def string_to_grid(str)
   grid
 end
 
+if $PROGRAM_NAME == __FILE__
 # needs naked triple, y-wing
 # GRID = "014600300050000007090840100000400800600050009007009000008016030300000010009008570"
 #
 # can proceed with box/line reduction
-GRID = "200068050008002000560004801000000530400000002097000000804300096000800300030490007"
+# GRID = "200068050008002000560004801000000530400000002097000000804300096000800300030490007"
 #
 # can proceed with hidden pair
 # GRID = '000000000904607000076804100309701080008000300050308702007502610000403208000000000'
+  GRID = '610320000300400000058600000009503620000040000023801500000006750000004003000058014'
 
-if GRID.length != 81
-  puts 'Bad input'
-  exit
+  if GRID.length != 81
+    puts 'Bad input'
+    exit
+  end
+
+  puts GRID
+  solver = Solver.new GRID
+  solver.solve
 end
-
-puts GRID
-solver = Solver.new GRID
-solver.solve
-
-# strategies = [ ["singles", eliminateSingles],
-#                ["naked pairs", eliminatePairs],
-#                ["naked triples", eliminateTriples],
-#                ["naked quads", eliminateQuads],
-#                ["pointing pairs", eliminatePointingPairs],
-#                ["box line reduction", eliminateBoxLineReduction],
-#                ["X-wing", eliminateXWings],
-#                ["Y-wing", eliminateYWings],
-#                ["XYZ-wing", eliminateXYZWings]]
-# puts solved
-# solved.each
-# puts candidates

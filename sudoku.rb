@@ -176,6 +176,22 @@ class Solver
     end
   end
 
+  def valid?
+    tstset = lambda do |set|
+      nums = Array.new(10, 0)
+      set.each do |cell|
+        num = cell.value
+        nums[num] = nums[num] + 1 if num > 0
+      end
+      nums.all? { |x| x <= 1 }
+    end
+    (1..9).all? do |i|
+      tstset.call(get_solved_row(i)) and
+        tstset.call(get_solved_column(i)) and
+        tstset.call(get_solved_box(i))
+    end
+  end
+
   def solved?
     @candidates.length == 0
   end
@@ -265,6 +281,21 @@ class Solver
     @candidates.select { |cell| cell.pos.box_number == i }
   end
   
+  def get_solved_row(i)
+    @grid.select { |pos,cell| pos.row == i and cell.value > 0
+    }.to_a.map! { |pos,cell| cell }
+  end
+
+  def get_solved_column(i)
+    @grid.select { |pos,cell| pos.column == i and cell.value > 0
+    }.to_a.map! { |pos,cell| cell }
+  end
+
+  def get_solved_box(i)
+    @grid.select { |pos,cell| pos.box_number == i and cell.value > 0
+    }.to_a.map! { |pos,cell| cell }
+  end
+
   def eliminator(fun)
     found = []
     (1..9).each do |i|
@@ -807,5 +838,9 @@ if $PROGRAM_NAME == __FILE__
 
   puts GRID
   solver = Solver.new GRID
-  solver.solve
+  if solver.valid?
+    solver.solve
+  else
+    puts "Invalid grid"
+  end
 end

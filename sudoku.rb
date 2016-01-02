@@ -56,7 +56,9 @@ class Pos
   end
 
   def to_s
-    "#{@row} #{@column}"
+    # "#{@row} #{@column}"
+    tmp = ("A".ord + @row - 1).chr
+    "#{tmp}#{@column}"
   end
 
   def ==(other)
@@ -84,7 +86,7 @@ class Cell
   end
 
   def to_s
-    "#{@pos.row} #{@pos.column} #{@value}"
+    "#{pos} #{@value}"
   end
 
   def ==(other)

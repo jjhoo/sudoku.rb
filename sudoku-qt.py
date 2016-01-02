@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# coding: latin1
 #
 # Copyright (c) 2015-2016 Jani J. Hakala <jjhakala@gmail.com> Jyväskylä, Finland
 #
@@ -16,6 +17,10 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 from PySide import QtCore, QtGui, QtUiTools
+
+import os
+import perttirpc
+import time
 
 class SudokuGrid(QtGui.QWidget):
     def __init__(self, *args, **kw):
@@ -133,6 +138,24 @@ class SudokuApp(QtGui.QApplication):
 
         self.paint_area = self.ui.findChild(SudokuGrid, "paint_area")
         self.ui.setFixedSize(610, 840)
+
+        self.connect()
+        # self.rpc = bertrpc.Service('localhost', 7777)
+        # self.rpc.request('call').sudoku.init('610320000300400000058600000009503620000040000023801500000006750000004003000058014')
+
+    def connect(self):
+        user = os.getenv('USER')
+        self.rpc_sock = perttirpc.connect_unix('/tmp/sudokusocket-' + user + os.sep + 'sudoku.sock')
+        self.rpc = perttirpc.Connection(self.rpc_sock)
+
+        reply = self.rpc.call('sudoku', 'init',
+                              '610320000300400000058600000009503620000040000023801500000006750000004003000058014')
+        if perttirpc.is_ok_reply(reply):
+            print "Ok"
+
+        reply = self.rpc.call('sudoku', 'solve', [])
+        print reply
+        sys.exit(1)
 
     def show(self):
         self.ui.show()

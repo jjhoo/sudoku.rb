@@ -158,6 +158,17 @@ class Solver
     end
   end
 
+  def to_s
+    s = ''
+    (1..9).each do |i|
+      (1..9).each do |j|
+        cell = @grid[Pos.new(i, j)]
+        s << cell.value.to_s
+      end
+    end
+    s
+  end
+
   def dump_grid
     ios = $stdout
     ios << 'Grid' << "\n"

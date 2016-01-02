@@ -63,15 +63,15 @@ class Connection(object):
         # print 'recv_packet4 3', repr(msg), ord(msg[0])
         return (msg_size, msg)
 
-    def call(self, module, function, args):
+    def call(self, module, function, args=[]):
         msg = self.encoder.encode((Atom('call'), Atom(module), Atom(function), args))
-        print "Send ", repr(msg)
+        # print "Send ", repr(msg)
         self.send_packet4(msg)
         size, data = self.recv_packet4()
         msg = self.decoder.decode(data)
         return msg
 
-    def cast(self, module, function, args):
+    def cast(self, module, function, args=[]):
         msg = self.encoder.encode((Atom('cast'), Atom(module), Atom(function), args))
         self.send_packet4(msg)
 

@@ -159,19 +159,54 @@ class Sudoku_Handler < Handler
   def init(grid)
     puts "Sudoku init #{grid}"
     @grid = grid
+    @solver = Solver.new @grid
     reply_ok
+  end
+
+  def get_candidates
+    list = @solver.candidates.map { |cell| t[t[cell.pos.row, cell.pos.column], cell.value] }
+    reply(list)
+  end
+
+  def get_solved
+    list = @solver.grid.to_a.map! { |pos,cell| t[t[pos.row, pos.column], cell.value] }.select! { |x| x[1] > 0 }
+    reply(list)
   end
 
   def solve
     puts "Sudoku solve"
-    solver = Solver.new @grid
-    unless solver.valid?
+    unless @solver.valid?
       reply(:invalid_grid)
       return
     end
-    solver.solve
-    status = (solver.solved? and solver.valid?) ? :solved : :unsolved
-    reply(t[status, solver.to_s])
+    @solver.solve
+    status = (@solver.solved? and @solver.valid?) ? :solved : :unsolved
+    reply(t[status, @solver.to_s])
+  end
+
+  def solve_singles
+    unless @solver.valid?
+      reply(:invalid_grid)
+      return
+    end
+    solved, removed = @solver.solve_singles
+    status = (@solver.solved? and @solver.valid?) ? :solved : :unsolved
+    solved.map! { |cell| t[t[cell.pos.row, cell.pos.column], cell.value] }
+    removed.map! { |cell| t[t[cell.pos.row, cell.pos.column], cell.value] }
+    reply(t[status, @solver.to_s, solved, removed])
+  end
+
+  def step
+    puts "Sudoku step"
+    unless @solver.valid?
+      reply(:invalid_grid)
+      return
+    end
+    solved, removed = @solver.step
+    status = (@solver.solved? and @solver.valid?) ? :solved : :unsolved
+    solved.map! { |cell| t[t[cell.pos.row, cell.pos.column], cell.value] }
+    removed.map! { |cell| t[t[cell.pos.row, cell.pos.column], cell.value] }
+    reply(t[status, @solver.to_s, solved, removed])
   end
 end
 

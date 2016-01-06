@@ -29,10 +29,14 @@ class SudokuGrid(QtGui.QWidget):
         self.box_sz = 3 * self.cell_sz
         self.grid_sz = 9 * self.cell_sz
 
+        self.num_sz = self.cell_sz / 3
+        self.num_font_sz = self.num_sz - 5
+
+        self.reset()
+
+    def reset(self):
         self.solved = {}
         self.candidates = {}
-
-        self.solved[(1, 1)] = 9
 
         self.pixmap = QtGui.QPixmap(600, 600)
         self.pixmap.fill(self, 0, 0)
@@ -40,6 +44,12 @@ class SudokuGrid(QtGui.QWidget):
         painter.initFrom(self)
         self.paint(painter)
         painter.end()
+        self.update()
+
+    def get_pixmap_painter(self):
+        painter = QtGui.QPainter(self.pixmap)
+        painter.initFrom(self)
+        return painter
 
     def paint_grid(self, painter):
         pen0 = QtGui.QPen()
@@ -51,6 +61,8 @@ class SudokuGrid(QtGui.QWidget):
         pen2.setWidth(1)
 
         painter.setPen(pen0)
+        painter.fillRect(QtCore.QRect(0, 0, self.grid_sz, self.grid_sz),
+                         QtCore.Qt.lightGray)
         painter.drawRect(QtCore.QRect(0, 0, self.grid_sz, self.grid_sz))
 
         for i in range(0, self.grid_sz + 1, self.cell_sz):
@@ -63,52 +75,79 @@ class SudokuGrid(QtGui.QWidget):
             painter.drawLine(0, i, self.grid_sz, i)
 
     def paint_cands(self, painter):
-        num_sz = self.cell_sz / 3
-        font_sz = num_sz - 5
-        painter.setFont(QtGui.QFont("Times", font_sz))
+        painter.setFont(QtGui.QFont("Times", self.num_font_sz))
 
-        for row in range(0, 9):
-            for col in range(0, 9):
-                # skip cell if solved
-
-                x0 = row * self.cell_sz
-                y0 = col * self.cell_sz
-                x = x0
-                y = y0
+        for row in range(1, 10):
+            for col in range(1, 10):
                 for n in range(1, 10):
-                    if (row + 1, col + 1) in self.solved:
+                    if (row, col) in self.solved:
                         continue
-                    # skip a number if removed
+                    self.paint_cell_candidate(row, col, n, painter)
 
-                    rect = QtCore.QRectF(x, y, num_sz, num_sz)
-                    painter.drawText(rect, QtCore.Qt.AlignCenter, "%d" % n)
-                    if n % 3 == 0:
-                        x = x0
-                        y += num_sz
-                    else:
-                        x += num_sz
+    def candidate_rect(self, row, column, number):
+        num_sz = self.cell_sz / 3
+        x = (row - 1) * self.cell_sz
+        y = (column - 1) * self.cell_sz
 
-    def paint_solved(self, painter):
+        offset = [2, 0, 1]		# 3, 1, 2
+        x += offset[number % 3] * num_sz
+        y += (number - 1) / 3 * num_sz
+
+        rect = QtCore.QRectF(x, y, num_sz, num_sz)
+        return rect
+
+    def paint_cell_candidate(self, row, column, number, painter):
+        # row		1..9
+        # column 	1..9
+
+        rect = self.candidate_rect(row, column, number)
+        painter.drawText(rect, QtCore.Qt.AlignCenter, "%d" % number)
+
+    def paint_cell_candidates(self, candidates, painter=None):
+        if painter is None:
+            painter = self.get_pixmap_painter()
+
+        painter.setFont(QtGui.QFont("Times", self.num_font_sz))
+
+        for (row, col), n in candidates:
+            self.paint_cell_candidate(row, col, n, painter)
+
+    def cell_rect(self, row, column):
+        # row		1..9
+        # column 	1..9
+        x = (row - 1) * self.cell_sz
+        y = (column - 1) * self.cell_sz
+
+        rect = QtCore.QRectF(x, y, self.cell_sz, self.cell_sz)
+        return rect
+
+    def update_solved(self, cells, color=None):
+        painter = self.get_pixmap_painter()
+
+        for (row, col), num in cells:
+            self.solved[row, col] = num
+        self.paint_solved(cells, painter, color)
+
+    def paint_solved(self, cells, painter=None, color=QtCore.Qt.black):
+        if painter is None:
+            painter = self.get_pixmap_painter()
+
         font_size = 40
         painter.setFont(QtGui.QFont("Times", font_size))
+        pen = QtGui.QPen()
+        pen.setColor(color)
+        painter.setPen(pen)
+        for (row, col), num in cells:
+            rect = self.cell_rect(row, col)
+            self.blank_rect(rect, 2, painter)
+            painter.drawText(rect, QtCore.Qt.AlignCenter, "%d" % num)
 
-        for row in range(0, 9):
-            for col in range(0, 9):
-                try:
-                    num = self.solved[row + 1, col + 1]
-                    x0 = row * self.cell_sz
-                    y0 = col * self.cell_sz
-                    rect = QtCore.QRectF(row * self.cell_sz, col * self.cell_sz,
-                                         self.cell_sz, self.cell_sz)
-
-                    painter.drawText(rect, QtCore.Qt.AlignCenter, "%d" % num)
-                except KeyError:
-                    pass
+        self.update()
 
     def paint(self, painter):
         self.paint_grid(painter)
-        self.paint_cands(painter)
-        self.paint_solved(painter)
+        # self.paint_cands(painter)
+        self.paint_solved(((k, v) for k, v in self.solved.iteritems()), painter)
 
     def paintEvent(self, event):
         painter = QtGui.QPainter()
@@ -116,6 +155,52 @@ class SudokuGrid(QtGui.QWidget):
         painter.setClipRegion(event.region())
         painter.drawPixmap(0, 0, self.pixmap)
         painter.end()
+
+    def blank_rect(self, rect, width, painter, color=QtCore.Qt.lightGray):
+        rect = QtCore.QRect(rect.x() + width, rect.y() + width,
+                            rect.width() - 2 * width, rect.width() - 2 * width)
+        painter.fillRect(rect, color)
+
+    def border_rect(self, rect, width, painter, color=QtCore.Qt.lightGray):
+        pen = QtGui.QPen()
+        pen.setWidth(width)
+        pen.setColor(color)
+        painter.setPen(pen)
+
+        rect = QtCore.QRect(rect.x() + width, rect.y() + width,
+                            rect.width() - 2 * width, rect.width() - 2 * width)
+        painter.drawRect(rect)
+
+    def blank_cell(self, row, column, painter):
+        # row		1..9
+        # column 	1..9
+        self.blank_rect(self.cell_rect(row, column), 2, painter)
+
+    def blank_candidate(self, row, column, number, painter):
+        rect = self.candidate_rect(row, column, number)
+
+        dx = [-1, 1, 0]		# 3, 1, 2
+        dy = [1, 0, -1]
+        rect.translate(dx[number % 3], dy[(number - 1)/ 3])
+        self.border_rect(rect, 1, painter, QtCore.Qt.red)
+
+    def eliminate(self, eliminated):
+        painter = self.get_pixmap_painter()
+        for (row, col), num in eliminated:
+            self.blank_candidate(row, col, num, painter)
+        self.update()
+
+    def mark_cell(self, row, column, painter):
+        pass
+
+    def mark_candidate(self, row, column, number, painter):
+        pass
+
+    def unmark_cell(self, row, column):
+        pass
+
+    def unmark_candidate(self, row, column, number, painter):
+        pass
 
 def load_ui(filename, parent=None):
     loader = QtUiTools.QUiLoader()
@@ -136,26 +221,59 @@ class SudokuApp(QtGui.QApplication):
         super(SudokuApp, self).__init__(args)
         self.ui = load_ui("sudoku.ui")
 
-        self.paint_area = self.ui.findChild(SudokuGrid, "paint_area")
+        self.grid = self.ui.findChild(SudokuGrid, "paint_area")
         self.ui.setFixedSize(610, 840)
+        self.solved = False
 
-        self.connect()
+        self.step_button = self.ui.findChild(QtGui.QPushButton, "step_button")
+        self.step_button.clicked.connect(self.on_step)
+
+        button = self.ui.findChild(QtGui.QPushButton, "reset_button")
+        button.clicked.connect(self.on_reset)
+
+        self.connect_rpc()
         # self.rpc = bertrpc.Service('localhost', 7777)
         # self.rpc.request('call').sudoku.init('610320000300400000058600000009503620000040000023801500000006750000004003000058014')
 
-    def connect(self):
+    def connect_rpc(self):
         user = os.getenv('USER')
         self.rpc_sock = perttirpc.connect_unix('/tmp/sudokusocket-' + user + os.sep + 'sudoku.sock')
         self.rpc = perttirpc.Connection(self.rpc_sock)
 
-        reply = self.rpc.call('sudoku', 'init',
-                              '610320000300400000058600000009503620000040000023801500000006750000004003000058014')
-        if perttirpc.is_ok_reply(reply):
-            print "Ok"
+        self.init_grid()
+        # reply = self.rpc.call('sudoku', 'solve', [])
+        # reply = self.rpc.call('sudoku', 'solve_singles')
+        # print reply
+        # sys.exit(1)
 
-        reply = self.rpc.call('sudoku', 'solve', [])
-        print reply
-        sys.exit(1)
+    def init_grid(self, grid='610320000300400000058600000009503620000040000023801500000006750000004003000058014'):
+        reply = self.rpc.call('sudoku', 'init', grid)
+        if not perttirpc.is_ok_reply(reply):
+            # Display error
+            pass
+
+        reply = self.rpc.call('sudoku', 'get_solved')
+        # print reply
+        self.grid.update_solved(reply)
+
+        reply = self.rpc.call('sudoku', 'get_candidates')
+        # print reply
+        self.grid.paint_cell_candidates(reply)
+
+    def on_reset(self):
+        self.grid.reset()
+        self.init_grid()
+        self.step_button.setEnabled(True)
+
+    def on_step(self):
+        reply = self.rpc.call('sudoku', 'step')
+        status, ngrid, solved, eliminated = reply
+        self.grid.eliminate(eliminated)
+        self.grid.update_solved(solved, QtCore.Qt.blue)
+        # print reply
+
+        if status == 'solved':
+            self.step_button.setDisabled(True)
 
     def show(self):
         self.ui.show()

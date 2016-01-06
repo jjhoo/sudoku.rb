@@ -140,10 +140,12 @@ class Solver
   end
 
   def update_cell(cell)
-    candidates.reject! { |cell2| cell.pos == cell2.pos }
-    candidates.reject! do |cell2|
-      cell.value == cell2.value and cell.pos.sees? cell2.pos
+    removed = candidates.select do |cell2|
+      cell.pos == cell2.pos or
+        (cell.value == cell2.value and cell.pos.sees? cell2.pos)
     end
+    @candidates -= removed
+    removed
   end
 
   def dump_candidates
@@ -209,8 +211,7 @@ class Solver
     @candidates.length == 0
   end
 
-  def solve
-    puts 'Start solving'
+  def step
     finders = [
       proc { find_singles_simple },
       proc { find_singles },
@@ -227,26 +228,48 @@ class Solver
       proc { find_xyzwings }
     ]
     
-    loop do
-      found = []
-      # self.dump_candidates
+    solved = []
+    removed = []
 
-      finders.each do |finder|
-        found = finder.call
-        if found.length > 0
-          puts 'Something found'
-          break
-        else
-          puts 'Nothing found'
-        end
+    finders.each do |finder|
+      solved, removed = finder.call
+      if solved.length > 0 or removed.length > 0
+        break
+      end
+    end
+    [solved, removed]
+  end
+
+  def solve_singles
+    finders = [
+      proc { find_singles_simple },
+      proc { find_singles },
+    ]
+
+    solved = []
+    removed = []
+    finders.each do |finder|
+      nsolved, nremoved = finder.call
+      solved |= nsolved
+      removed |= nremoved
+    end
+    [solved, removed]
+  end
+
+  def solve
+    puts 'Start solving'
+
+    loop do
+      solved, removed = step
+      if solved.length > 0 or removed.length > 0
+        puts 'Something solved / removed'
       end
       if self.solved?
         puts 'Solved!'
         dump_grid
         break
       end
-
-      next if found.length > 0
+      next if solved.length > 0 or removed.length > 0
 
       puts 'No progress'
       dump_candidates
@@ -256,6 +279,7 @@ class Solver
 
   # To be called with solved cells
   def update_grid(found)
+    removed = []
     found.each do |x|
       puts "Solved: #{x}"
       cell = @grid[x.pos]
@@ -263,8 +287,9 @@ class Solver
 
       @solved.push cell
       @unsolved.reject! { |xx| xx.pos == x.pos }
-      update_cell(x)
+      removed |= update_cell(x)
     end
+    removed
   end
 
   def update_candidates(found)
@@ -281,7 +306,7 @@ class Solver
     # diff = old - @candidates
     # puts "diff #{diff}"
   end
-  
+
   def get_row(i)
     @candidates.select { |cell| cell.pos.row == i }
   end
@@ -316,7 +341,6 @@ class Solver
       found += fun.call(get_column(i))
       found += fun.call(get_box(i))
     end
-
     found.uniq! { |x| [x.pos, x.value] }
     found.each do |x|
       puts "eliminator found: #{x}"
@@ -328,7 +352,7 @@ class Solver
     puts 'Find singles simple'
 
     dummy = lambda do |set|
-      found = []
+      solved = []
 
       # Unique positions
       poss = set.map(&:pos)
@@ -339,20 +363,21 @@ class Solver
         cands = set.select { |x| x.pos == pos }
         # puts "cands #{cands.length}"
 
-        found.push(cands[0].dup) if cands.length == 1
+        solved.push(cands[0].dup) if cands.length == 1
       end
-      found
+      solved
     end
 
-    found = eliminator proc { |set| dummy.call(set) }
-    if found.length > 0
-      found.each do |x|
+    solved = eliminator proc { |set| dummy.call(set) }
+    if solved.length > 0
+      solved.each do |x|
         puts "find_singles_simple #{x}"
       end
-      update_grid(found)
-      # update_candidates(found)
+      removed = update_grid(solved)
+    else
+      removed = []
     end
-    found
+    [solved, removed]
   end
 
   def find_singles
@@ -375,16 +400,16 @@ class Solver
       found
     end
 
-    found = eliminator proc { |set| dummy.call(set) }
-    if found.length > 0
-      found.each do |x|
+    solved = eliminator proc { |set| dummy.call(set) }
+    if solved.length > 0
+      solved.each do |x|
         puts "find_singles #{x}"
       end
-
-      update_grid(found)
-      # update_candidates(found)
+      removed = update_grid(solved)
+    else
+      removed = []
     end
-    found
+    [solved, removed]
   end
 
   def find_naked_groups(limit)
@@ -431,7 +456,7 @@ class Solver
 
       update_candidates(found)
     end
-    found
+    [[], found]
   end
 
   def find_naked_pairs
@@ -500,7 +525,7 @@ class Solver
 
       update_candidates(found)
     end
-    found
+    [[], found]
   end
 
   def find_hidden_pairs
@@ -571,7 +596,7 @@ class Solver
       end
       update_candidates(found)
     end
-    found
+    [[], found]
   end
 
   def find_xwings
@@ -639,7 +664,7 @@ class Solver
       end
       update_candidates(found)
     end
-    found
+    [[], found]
   end
 
   def find_xyzwings
@@ -683,7 +708,7 @@ class Solver
       end
       update_candidates(found)
     end
-    found
+    [[], found]
   end
 
   def find_ywings
@@ -714,6 +739,9 @@ class Solver
 
           # puts "consider #{a} - #{b} - #{hinge}"
           # puts "	     #{anums} - #{bnums} - #{hnums}"
+          @candidates.select { |cell|
+            cell.value == z and a.sees?(cell.pos) and b.sees?(cell.pos)
+          }.uniq(&:pos).each { |cell| puts "   #{cell} #{hinge} #{a} #{b}" }
 
           found |= @candidates.select { |cell|
             cell.value == z and a.sees?(cell.pos) and b.sees?(cell.pos)
@@ -728,7 +756,7 @@ class Solver
       end
       update_candidates(found)
     end
-    found
+    [[], found]
   end
 
   def find_boxline_reductions
@@ -785,7 +813,7 @@ class Solver
       end
       update_candidates(found)
     end
-    found
+    [[], found]
   end
 end
 

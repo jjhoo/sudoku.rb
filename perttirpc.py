@@ -69,7 +69,7 @@ class Connection(object):
         self.send_packet4(msg)
         size, data = self.recv_packet4()
         msg = self.decoder.decode(data)
-        return msg
+        return msg[1]
 
     def cast(self, module, function, args=[]):
         msg = self.encoder.encode((Atom('cast'), Atom(module), Atom(function), args))

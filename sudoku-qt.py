@@ -16,6 +16,9 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+from __future__ import print_function, division
+import six
+
 from PySide import QtCore, QtGui, QtUiTools
 
 import os
@@ -29,7 +32,7 @@ class SudokuGrid(QtGui.QWidget):
         self.box_sz = 3 * self.cell_sz
         self.grid_sz = 9 * self.cell_sz
 
-        self.num_sz = self.cell_sz / 3
+        self.num_sz = self.cell_sz // 3
         self.num_font_sz = self.num_sz - 5
 
         self.reset()
@@ -74,24 +77,14 @@ class SudokuGrid(QtGui.QWidget):
             painter.drawLine(i, 0, i, self.grid_sz)
             painter.drawLine(0, i, self.grid_sz, i)
 
-    def paint_cands(self, painter):
-        painter.setFont(QtGui.QFont("Times", self.num_font_sz))
-
-        for row in range(1, 10):
-            for col in range(1, 10):
-                for n in range(1, 10):
-                    if (row, col) in self.solved:
-                        continue
-                    self.paint_cell_candidate(row, col, n, painter)
-
     def candidate_rect(self, row, column, number):
-        num_sz = self.cell_sz / 3
+        num_sz = self.cell_sz // 3
         x = (row - 1) * self.cell_sz
         y = (column - 1) * self.cell_sz
 
         offset = [2, 0, 1]		# 3, 1, 2
         x += offset[number % 3] * num_sz
-        y += (number - 1) / 3 * num_sz
+        y += (number - 1) // 3 * num_sz
 
         rect = QtCore.QRectF(x, y, num_sz, num_sz)
         return rect
@@ -142,12 +135,11 @@ class SudokuGrid(QtGui.QWidget):
             self.blank_rect(rect, 2, painter)
             painter.drawText(rect, QtCore.Qt.AlignCenter, "%d" % num)
 
-        self.update()
-
     def paint(self, painter):
         self.paint_grid(painter)
         # self.paint_cands(painter)
-        self.paint_solved(((k, v) for k, v in self.solved.iteritems()), painter)
+        self.paint_solved(((k, v) for k, v in six.iteritems(self.solved)),
+                          painter)
 
     def paintEvent(self, event):
         painter = QtGui.QPainter()
@@ -181,7 +173,7 @@ class SudokuGrid(QtGui.QWidget):
 
         dx = [-1, 1, 0]		# 3, 1, 2
         dy = [1, 0, -1]
-        rect.translate(dx[number % 3], dy[(number - 1)/ 3])
+        rect.translate(dx[number % 3], dy[(number - 1) // 3])
         self.border_rect(rect, 1, painter, QtCore.Qt.red)
 
     def eliminate(self, eliminated):
@@ -213,7 +205,7 @@ def load_ui(filename, parent=None):
 
 def asdf(selffi):
     def cb(*args):
-        print "Here"
+        print("Here")
     return cb
 
 class SudokuApp(QtGui.QApplication):

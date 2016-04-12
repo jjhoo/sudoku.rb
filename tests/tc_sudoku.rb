@@ -1,4 +1,6 @@
-require_relative "sudoku"
+require 'helper'
+
+require "sudoku"
 require "test/unit"
 
 class TestSudoku < Test::Unit::TestCase
@@ -7,7 +9,7 @@ class TestSudoku < Test::Unit::TestCase
       solver = Solver.new grid
       return false unless solver.valid?
       solver.solve
-      solver.solved? and valid?
+      solver.solved? and solver.valid?
     end
 
     assert(tst.call('014600300050000007090840100000400800600050009007009000008016030300000010009008570'))
@@ -19,8 +21,8 @@ class TestSudoku < Test::Unit::TestCase
 
   def test_xyzwing
     solver = Solver.new '100002000050090204000006700034001005500908007800400320009600000306010040000700009'
-    assert(solver.valid?)
+    assert(solver.valid? == true)
     solver.solve
-    assert((solver.solved? and valid?))
+    assert((solver.solved? and solver.valid?) == true)
   end
 end

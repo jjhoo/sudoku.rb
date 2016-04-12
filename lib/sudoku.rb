@@ -150,7 +150,7 @@ class Solver
   end
 
   def log(item, text, asdf=[])
-    puts "#{item} #{text}"
+    puts "#{item} #{text}: #{asdf.length} candidates"
   end
 
   def dump_candidates(ios=$stdout)

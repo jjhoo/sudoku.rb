@@ -104,6 +104,7 @@ class Solver
   def initialize(str)
     @grid = string_to_grid(str)
     @candidates = []
+    @trace = nil
     init
   end
 
@@ -148,8 +149,12 @@ class Solver
     removed
   end
 
-  def dump_candidates
-    puts 'Candidates'
+  def log(item, text, asdf=[])
+    puts "#{item} #{text}"
+  end
+
+  def dump_candidates(ios=$stdout)
+    ios << 'Candidates' << "\n"
 
     coords = @candidates.map(&:pos).uniq
 
@@ -158,7 +163,7 @@ class Solver
     }.map { |xs| [xs[0].pos, xs.map(&:value)] }
 
     cells.each do |pos, nums|
-      puts "    (#{pos.row}, #{pos.column})    #{nums}"
+      ios << "    (#{pos.row}, #{pos.column})    #{nums}\n"
     end
   end
 
@@ -173,8 +178,7 @@ class Solver
     s
   end
 
-  def dump_grid
-    ios = $stdout
+  def dump_grid(ios=$stdout)
     ios << 'Grid' << "\n"
 
     ios << '     '
@@ -257,21 +261,21 @@ class Solver
   end
 
   def solve
-    puts 'Start solving'
+    log(:start, 'Start solving')
 
     loop do
       solved, removed = step
-      if solved.length > 0 or removed.length > 0
-        puts 'Something solved / removed'
-      end
+      log(:progress, "solved cells", solved) if solved.length > 0
+      log(:progress, "removed", removed) if removed.length > 0
+
       if self.solved?
-        puts 'Solved!'
+        log(:done, "Solved")
         dump_grid
         break
       end
       next if solved.length > 0 or removed.length > 0
 
-      puts 'No progress'
+      log(:no_progress, "No progress", @candidates)
       dump_candidates
       break
     end
@@ -281,7 +285,7 @@ class Solver
   def update_grid(found)
     removed = []
     found.each do |x|
-      puts "Solved: #{x}"
+      log(:solved_cell, "#{x}")
       cell = @grid[x.pos]
       cell.value = x.value
 
@@ -342,14 +346,14 @@ class Solver
       found += fun.call(get_box(i))
     end
     found.uniq! { |x| [x.pos, x.value] }
-    found.each do |x|
-      puts "eliminator found: #{x}"
-    end
+    # found.each do |x|
+    #   log(:eliminated, "#{x}")
+    # end
     found
   end
 
   def find_singles_simple
-    puts 'Find singles simple'
+    log(:finder, "Find singles simple")
 
     dummy = lambda do |set|
       solved = []
@@ -370,9 +374,7 @@ class Solver
 
     solved = eliminator proc { |set| dummy.call(set) }
     if solved.length > 0
-      solved.each do |x|
-        puts "find_singles_simple #{x}"
-      end
+      log(:solved_cells, "find_singles_simple", solved)
       removed = update_grid(solved)
     else
       removed = []
@@ -381,7 +383,7 @@ class Solver
   end
 
   def find_singles
-    puts 'Find singles'
+    log(:finder, "Find singles")
 
     dummy = lambda do |set|
       nums = unique_numbers(set)
@@ -402,9 +404,7 @@ class Solver
 
     solved = eliminator proc { |set| dummy.call(set) }
     if solved.length > 0
-      solved.each do |x|
-        puts "find_singles #{x}"
-      end
+      log(:solved_cells, "find_singles", solved)
       removed = update_grid(solved)
     else
       removed = []
@@ -413,7 +413,8 @@ class Solver
   end
 
   def find_naked_groups(limit)
-    puts "Find naked groups (#{limit})"
+    log(:finder, "Find naked groups (#{limit})")
+
     dummy = lambda do |set, limit|
       found = []
       nums = unique_numbers(set)
@@ -450,10 +451,7 @@ class Solver
 
     found = eliminator proc { |set| dummy.call(set, limit) }
     if found.length > 0
-      found.each do |x|
-        puts "find_naked_group(#{limit}) #{x}"
-      end
-
+      log(:eliminated, "find_naked_group(#{limit})", found)
       update_candidates(found)
     end
     [[], found]
@@ -472,7 +470,8 @@ class Solver
   end
 
   def find_hidden_groups(limit)
-    puts "Find hidden groups (#{limit})"
+    log(:finder, "Find hidden groups (#{limit})")
+
     dummy = lambda do |set, limit|
       found = []
 
@@ -519,10 +518,7 @@ class Solver
 
     found = eliminator proc { |set| dummy.call(set, limit) }
     if found.length > 0
-      found.each do |x|
-        puts "find_hidden_group(#{limit}) #{x}"
-      end
-
+      log(:eliminated, "find_hidden_group(#{limit})", found)
       update_candidates(found)
     end
     [[], found]
@@ -541,7 +537,8 @@ class Solver
   end
 
   def find_pointing_pairs
-    puts 'Find pointing pairs'
+    log(:finder, "Find pointing pairs")
+
     dummy = lambda do |set, psameline|
       return [] if set.length < 3
       nums = unique_numbers(set)
@@ -591,16 +588,15 @@ class Solver
     end
 
     if found.length > 0
-      found.each do |x|
-        puts "find_pointing_pairs #{x}"
-      end
+      log(:eliminated, "find_pointing_pairs", found)
       update_candidates(found)
     end
     [[], found]
   end
 
   def find_xwings
-    puts 'Find x-wings'
+    log(:finder, "Find x-wings")
+
     dummy = lambda do |pgetset, pother, ppos, pposother|
       found = []
       (1..8).each do |i|
@@ -659,16 +655,14 @@ class Solver
                         proc { |pos| pos.column })
 
     if found.length > 0
-      found.each do |x|
-        puts "find_xwings #{x}"
-      end
+      log(:eliminated, "find_xwings", found)
       update_candidates(found)
     end
     [[], found]
   end
 
   def find_xyzwings
-    puts 'Find xyz-wings'
+    log(:finder, "Find xyz-wings")
     found = []
 
     # Need to get cells that have 2 or 3 numbers
@@ -703,16 +697,14 @@ class Solver
     end
 
     if found.length > 0
-      found.each do |x|
-        puts "find_xyzwings #{x}"
-      end
+      log(:eliminated, "find_xyzwings", found)
       update_candidates(found)
     end
     [[], found]
   end
 
   def find_ywings
-    puts 'Find y-wings'
+    log(:finder, "Find y-wings")
     found = []
 
     # Need to get cells that have 2
@@ -751,16 +743,14 @@ class Solver
     end
 
     if found.length > 0
-      found.each do |x|
-        puts "find_ywings #{x}"
-      end
+      log(:eliminated, "find_ywings", found)
       update_candidates(found)
     end
     [[], found]
   end
 
   def find_boxline_reductions
-    puts 'Find box/line reductions'
+    log(:finder, "Find box/line reductions")
     found = []
 
     common = lambda do |set, subset, pinbox, pinline|
@@ -808,9 +798,7 @@ class Solver
     end
 
     if found.length > 0
-      found.each do |x|
-        puts "find_boxline_reductions #{x}"
-      end
+      log(:eliminated, "find_boxline_reductions", found)
       update_candidates(found)
     end
     [[], found]
